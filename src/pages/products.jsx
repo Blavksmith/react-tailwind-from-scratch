@@ -1,27 +1,38 @@
+import { useRef, useState, useEffect } from "react";
 import Buttonz from "../components/Elements/Button/Index";
 import CardProduct from "../components/Fragments/CardProduct";
-import Counter from "../components/Fragments/Counter";
-import { useState } from "react";
-
-const products = [
-    {
-        id: 1,
-        title: "Planted Tree",
-        image: "https://images.pexels.com/photos/1072179/pexels-photo-1072179.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-        price: 1000000
-    },
-    {
-        id: 2,
-        title: "ROG Strix",
-        image: "/images/product.jpg",
-        price: 2500000
-    }
-];
-
-const email = localStorage.getItem("email");
+import { getProduct } from "../services/product.axios";
+import { useLogin } from "../hooks/useLogin";
 
 const ProductPage = () => {
     const [cart, setCart] = useState([]);
+    const [products, setProducts] = useState([]);
+    const [totalPrice, setTotalPrice] = useState(0);
+    const username = useLogin();
+    
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const data = await getProduct();
+                console.log("Fetched Products:", data); // Debugging
+                setProducts(data);
+            } catch (error) {
+                console.error("Error fetching products:", error);
+            }
+        };
+        fetchProducts();
+    }, []);
+
+    useEffect(() => {
+        if (cart.length > 0) {
+            const sum = cart.reduce((acc, item) => {
+                const product = products.find(product => product.id === item.id);
+                return acc + (product ? product.price * item.qty : 0);
+            }, 0);
+            setTotalPrice(sum);
+            localStorage.setItem("cart", JSON.stringify(cart));
+        }
+    }, [cart, products]);
 
     const handleLogout = () => {
         localStorage.removeItem("email");
@@ -37,7 +48,7 @@ const ProductPage = () => {
                     item.id === id ? { ...item, qty: item.qty + 1 } : item
                 );
             } else {
-                return [...prevCart, { id: id, qty: 1 }];
+                return [...prevCart, { id, qty: 1 }];
             }
         });
     };
@@ -46,7 +57,7 @@ const ProductPage = () => {
         <>
             {/* Navbar */}
             <div className="flex justify-between items-center bg-blue-600 h-16 w-screen text-white font-bold px-10">
-                {email}
+                {username}
                 <Buttonz variant="bg-black" onClick={handleLogout}>Logout</Buttonz>
             </div>
 
@@ -54,17 +65,13 @@ const ProductPage = () => {
             <div className="flex justify-center items-start min-h-screen gap-10 p-10">
                 {/* Product List */}
                 <div className="w-3/4 flex flex-wrap gap-4">
-                    {products.map((product) => (
+                    {products.length > 0 && products.map((product) => (
                         <CardProduct key={product.id}>
                             <CardProduct.Header image={product.image} />
                             <CardProduct.Body title={product.title}>
                                 Lorem ipsum dolor sit, amet consectetur adipisicing elit. Voluptates amet culpa cum.
                             </CardProduct.Body>
-                            <CardProduct.Footer price={product.price}>
-                                <Buttonz variant="bg-blue-600" onClick={() => handleToCart(product.id)}>
-                                    Add to Cart
-                                </Buttonz>
-                            </CardProduct.Footer>
+                            <CardProduct.Footer price={product.price} id={product.id} handleToCart={handleToCart} />
                         </CardProduct>
                     ))}
                 </div>
@@ -103,13 +110,12 @@ const ProductPage = () => {
                             )}
                         </tbody>
                     </table>
+
+                    <div className="mt-4 font-bold text-lg">
+                        Total Price: {totalPrice.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+                    </div>
                 </div>
             </div>
-
-            {/* Counter */}
-            {/* <div className="flex justify-center">
-                <Counter />
-            </div> */}
         </>
     );
 };
